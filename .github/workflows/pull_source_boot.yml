@@ -1,0 +1,58 @@
+name: Build Kernel
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Download boot.img ${{ github.actor }}
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+    - name: Prepare Configuration
+      run: |
+        CONFIG_ENV=$(grep -w "CONFIG_ENV" config.env | head -n 1 | cut -d "=" -f 2)
+        CONFIG_LIST=(
+            BUILD_BOOT_IMG
+            SOURCE_BOOT_IMAGE
+            SOURCE_FASTBOOT_IMAGE
+        )
+
+        for CONFIG in "${CONFIG_LIST[@]}"; do
+            if [[ "$CONFIG" == "EXTRA_CMDS" || "$CONFIG" == "CUSTOM_CMDS" ]]; then
+                echo "$CONFIG=$(grep -w "$CONFIG" "$CONFIG_ENV" | head -n 1 | cut -d ":" -f 2)" >> $GITHUB_ENV
+            else
+                echo "$CONFIG=$(grep -w "$CONFIG" "$CONFIG_ENV" | head -n 1 | cut -d "=" -f 2)" >> $GITHUB_ENV
+            fi
+        done
+
+
+    - name: Setup build kernel environment
+      run: |
+        echo "BUILD_TIME=$(TZ=Asia/Shanghai date "+%Y%m%d%H%M")" >> $GITHUB_ENV
+        echo "DEVICE=$(echo ${{ env.KERNEL_CONFIG }} | sed 's!vendor/!!;s/_defconfig//;s/_user//;s/-perf//')" >> $GITHUB_ENV
+        sudo apt-get update
+        sudo apt-get install tar aria2
+        mkdir -p $GITHUB_WORKSPACE/kernel_workspace
+
+    - name: Download source boot image
+      if: env.BUILD_BOOT_IMG == 'true'
+      run: |
+        if [ ${{ env.SOURCE_FASTBOOT_IMAGE }} ]; then
+            FASTBOOT_IMAGE=`basename ${{ env.SOURCE_FASTBOOT_IMAGE }}`
+            aria2c -x 16 -s 16 -k 1M -c -o $FASTBOOT_IMAGE ${{ env.SOURCE_FASTBOOT_IMAGE }}
+            mkdir -p fastboot-image
+            tar xaf ${{ env.SOURCE_FASTBOOT_IMAGE }} -C fastboot-image
+            find fastboot-image -name boot.img -exec cp {} boot-source.img \;
+            find fastboot-image -name init_boot.img -exec cp {} boot-source.img \;
+        fi
+        if [ -f boot-source.img ]; then
+            echo "FORMAT_MKBOOTING=$(echo `tools/unpack_bootimg.py --boot_img=boot-source.img --format mkbootimg`)" >> $GITHUB_ENV
+            echo "HAVE_SOURCE_BOOT_IMAGE=true" >> $GITHUB_ENV
+        fi
+
+    - name: Update fastboot boot image
+      if: env.HAVE_SOURCE_BOOT_IMAGE == 'true' && env.HAVE_SOURCE_FASTBOOT_IMAGE == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: boot-source.img
+        path: kernel_workspace/boot.img
