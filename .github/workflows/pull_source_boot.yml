@@ -1,4 +1,4 @@
-name: Build Kernel
+name: Pull Boot Img
 on:
   workflow_dispatch:
 
