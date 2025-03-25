@@ -49,7 +49,6 @@ jobs:
         fi
 
     - name: Update fastboot boot image
-      if: env.HAVE_SOURCE_BOOT_IMAGE == 'true' && env.HAVE_SOURCE_FASTBOOT_IMAGE == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: boot-source.img
