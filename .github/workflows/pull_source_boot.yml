@@ -42,12 +42,10 @@ jobs:
             aria2c -x 16 -s 16 -k 1M -c -o $FASTBOOT_IMAGE ${{ env.SOURCE_FASTBOOT_IMAGE }}
             mkdir -p fastboot-image
             tar xaf $FASTBOOT_IMAGE -C fastboot-image
+            find fastboot-image -name boot.img
+            find fastboot-image -name init_boot.img
             find fastboot-image -name boot.img -exec cp {} boot-source.img \;
             find fastboot-image -name init_boot.img -exec cp {} boot-source.img \;
-        fi
-        if [ -f boot-source.img ]; then
-            echo "FORMAT_MKBOOTING=$(echo `tools/unpack_bootimg.py --boot_img=boot-source.img --format mkbootimg`)" >> $GITHUB_ENV
-            echo "HAVE_SOURCE_BOOT_IMAGE=true" >> $GITHUB_ENV
         fi
 
     - name: Update fastboot boot image
