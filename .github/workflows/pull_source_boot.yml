@@ -52,4 +52,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: boot-source.img
-        path: kernel_workspace/boot.img
+        path: boot-source.img
